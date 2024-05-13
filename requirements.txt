@@ -1,1 +1,2 @@
+websockets
 git+https://github.com/Swynfel/ceramic.git

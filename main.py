@@ -1,4 +1,15 @@
 import argparse
+import websockets
+from websockets.sync.server import ServerConnection, WebSocketServer, serve
+
+from player import SocketPlayer
+
+connections: list[SocketPlayer] = []
+
+def socket_handler(ws: ServerConnection) -> None:
+    player: SocketPlayer = SocketPlayer(ws)
+    connections.append(player)
+    player.listen()
 
 def parse_args() -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description="Azul server to host games.")
@@ -10,6 +21,11 @@ def main() -> None:
     args: argparse.Namespace = parse_args()
 
     print(f'Accepting connections at port {args.port}')
+
+    server: WebSocketServer
+    with serve(socket_handler, "", args.port) as server:
+        server.serve_forever()
+
 
 if __name__ == '__main__':
     main()
