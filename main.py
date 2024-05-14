@@ -4,12 +4,13 @@ from websockets.sync.server import ServerConnection, WebSocketServer, serve
 
 from player import SocketPlayer
 import game
+import connections
 
-connections: list[SocketPlayer] = []
+# connections: list[SocketPlayer] = []
 
 def socket_handler(ws: ServerConnection) -> None:
     player: SocketPlayer = SocketPlayer(ws)
-    connections.append(player)
+    connections.connectionHandler.add(player)
     player.listen()
 
 def parse_args() -> argparse.Namespace:
@@ -24,6 +25,7 @@ def main() -> None:
     print(f'Accepting connections at port {args.port}')
 
     game.gameHandler = game.GameHandler()
+    connections.connectionHandler = connections.ConnectionHandler()
 
     server: WebSocketServer
     with serve(socket_handler, "", args.port) as server:
