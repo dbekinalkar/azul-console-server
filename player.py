@@ -13,7 +13,105 @@ from ceramic.state import Tile
 
 import re
 
-import json
+class Command:
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        pass
+
+class NameCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        if len(args) <= 1:
+            player.ws.send("Pass in name as argument")
+            return False
+
+        player.name = args[1]
+        player.ws.send(f"Name updated to {player.name}")
+
+        return True
+
+class JoinCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        try: 
+            game.gameHandler.join(player)
+            player.ws.send("Joined game")
+            return True
+        except Exception as  e:
+            player.ws.send(e.args[0])
+            return False
+
+class LeaveCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        try:
+            game.gameHandler.leave(player)
+            player.ws.send("Left game")
+            return True
+        except Exception as e:
+            player.ws.send(e.args[0])
+            return False
+
+
+class PartyCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        if len(game.gameHandler.party) == 0:
+            player.ws.send("No one in game party")
+            return True
+        else:
+            p: 'SocketPlayer'
+            names: list[str] = [p.name for p in game.gameHandler.party]
+            player.ws.send("Party: " + ", ".join(names))
+            return False
+
+class StartCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        try:
+            game.gameHandler.start_game()
+            return True
+        except Exception as e:
+            player.ws.send(e.args[0])
+            return False
+
+class StateCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        if not game.gameHandler.game:
+            player.ws.send("No current game")
+            return False
+        
+        player.ws.send(str(game.gameHandler.game.state))
+        return True
+
+class MoveCommand(Command):
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        with player.actionLock:
+            if player.phase != "playing":
+                player.ws.send("Not your turn")
+                return False
+
+            match = re.match(r'^[0-9][A-E][0-5]$', args[1])
+
+            if not match:
+                player.ws.send(
+                    """Does not match regex
+                    Moves should be sent like 1C3
+                    First character: pile to take from
+                    Second character: color
+                    Third character: Line to add to (0 = floor)"""
+                        )
+                return False
+                
+            player.actionStr = args[1]
+            player.action = Action(int(args[1][0]), Tile.from_letter(args[1][1]), int(args[1][2]))
+            player.actionSem.release()
+
+            return True
+
+commands: dict[str, Command] = {
+    "name": NameCommand(),
+    "join": JoinCommand(),
+    "leave": LeaveCommand(),
+    "party": PartyCommand(),
+    "start": StartCommand(),
+    "state": StateCommand(),
+    "move": MoveCommand(),
+}
 
 class SocketPlayer(Player):
     name: str
@@ -50,64 +148,22 @@ class SocketPlayer(Player):
             self.process(message)
 
 
-    def process(self, msg: str):
+    def process(self, msg: str) -> bool:
         args: list[str] = msg.split(' ')
-        cmd: str = args[0]
-        if cmd.lower() == "name":
-            if len(args) <= 1:
-                self.ws.send("Pass in name as argument")
+        cmd: str = args[0].lower()
 
-            self.name = args[1]
-            self.ws.send(f"Name updated to {self.name}")
-        elif cmd.lower() == "join":
-            try: 
-                game.gameHandler.join(self)
-                self.ws.send("Joined game")
-            except Exception as  e:
-                self.ws.send(e.args[0])
-        elif cmd.lower() == "leave":
-            try:
-                game.gameHandler.leave(self)
-                self.ws.send("Left game")
-            except Exception as e:
-                self.ws.send(e.args[0])
-        elif cmd.lower() == "party":
-            if len(game.gameHandler.party) == 0:
-                self.ws.send("No one in game party")
-            else:
-                p: SocketPlayer
-                names: list[str] = [p.name for p in game.gameHandler.party]
-                self.ws.send(", ".join(names))
-        elif cmd.lower() == "start":
-            try:
-                game.gameHandler.start_game()
-            except Exception as e:
-                self.ws.send(e.args[0])
-                
 
-        elif cmd.lower() == "move":
-            with self.actionLock:
-                if self.phase != "playing":
-                    self.ws.send("Not your turn")
-                    return 
+        if cmd == "help":
+            self.ws.send("Commands: " + ", ".join(commands.keys()))
+            return True
+        
+        if cmd not in commands:
+            self.ws.send("Invalid Command")
+            return False
 
-                match = re.match(r'^[0-9][A-E][0-5]$', args[1])
+        cmdObj: Command = commands.get(cmd)
 
-                if not match:
-                    self.ws.send(
-                        """Does not match regex
-                        Moves should be sent like 1C3
-                        First character: pile to take from
-                        Second character: color
-                        Third character: Line to add to (0 = floor)"""
-                            )
-                    return
-                    
-                self.actionStr = args[1]
-                self.action = Action(int(args[1][0]), Tile.from_letter(args[1][1]), int(args[1][2]))
-                self.actionSem.release()
-        else:
-            self.ws.send("Invalid command")
+        return cmdObj.execute(args, self)
 
 
     def play(self, state):
