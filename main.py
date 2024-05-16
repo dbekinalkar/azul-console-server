@@ -32,7 +32,7 @@ def main() -> None:
     server: WebSocketServer
     if args.cert:
         ssl_context: ssl.SSLContext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=args.cert)
+        ssl_context.load_cert_chain(certfile=args.cert, keyfile=args.cert)
         with serve(socket_handler, "", args.port) as server:
             server.serve_forever()
     else:
