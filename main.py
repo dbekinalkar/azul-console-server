@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description="Azul server to host games.")
     parser.add_argument("port", nargs='?', type=int, default=3000, help="Port number (default: 3000)")
     parser.add_argument("--cert", type=str, help="Path to the certificate file")
+    parser.add_argument("--key", type=str, help="Path to the private key file")
     args: argparse.Namespace = parser.parse_args()
     return args
 
@@ -30,9 +31,9 @@ def main() -> None:
     connections.connectionHandler = connections.ConnectionHandler()
 
     server: WebSocketServer
-    if args.cert:
+    if args.cert and args.key:
         ssl_context: ssl.SSLContext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=args.cert, keyfile=args.cert)
+        ssl_context.load_cert_chain(args.cert, args.key)
         with serve(socket_handler, "", args.port) as server:
             server.serve_forever()
     else:
