@@ -81,5 +81,8 @@ class GameHandler:
             gameThread.start()
 
             return True
+        
+    def stop_game(self) -> bool:
+        self.game = None
 
 gameHandler: GameHandler = None

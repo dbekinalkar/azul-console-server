@@ -102,6 +102,18 @@ class StartCommand(Command):
         except Exception as e:
             player.ws.send(e.args[0])
             return False
+        
+class StopCommand(Command):
+    usage: str = "stop"
+    details: str = "Stop the Azul game"
+
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        try:
+            game.gameHandler.stop_game()
+            return True
+        except Exception as e:
+            player.ws.send(e.args[0])
+            return False
 
 class StateCommand(Command):
     usage: str = "state"
