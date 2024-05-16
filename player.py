@@ -20,7 +20,13 @@ class Command:
 class NameCommand(Command):
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         if len(args) <= 1:
-            player.ws.send("Pass in name as argument")
+            player.ws.send(f"Current Name: {player.name}")
+            return True
+        
+        match = re.match(r'^([a-zA-Z0-9]|_|-){1,15}$', args[1])
+
+        if not match:
+            player.ws.send("Illegal characters in name or name too long / short")
             return False
 
         player.name = args[1]
