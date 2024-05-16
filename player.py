@@ -123,11 +123,11 @@ class MoveCommand(Command):
 
             if not match:
                 player.ws.send(
-                    """Does not match regex
-                    Moves should be sent like 1C3
-                    First character: pile to take from
-                    Second character: color
-                    Third character: Line to add to (0 = floor)"""
+                    "Does not match regex\n"
+                    "Moves should be sent like 1C3\n"
+                    "First character: pile to take from (0 = middle)\n"
+                    "Second character: color\n"
+                    "Third character: Line to add to (0 = floor)"
                         )
                 return False
                 
