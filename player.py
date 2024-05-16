@@ -4,6 +4,7 @@
 import websockets
 import threading
 from websockets.sync.server import ServerConnection
+from websockets.exceptions import ConnectionClosedError
 
 import game
 import connections
@@ -193,6 +194,7 @@ commands: dict[str, Command] = {
     "leave": LeaveCommand(),
     "party": PartyCommand(),
     "start": StartCommand(),
+    "stop": StopCommand(),
     "state": StateCommand(),
     "move": MoveCommand(),
 }
@@ -229,9 +231,13 @@ class SocketPlayer(Player):
 
 
     def listen(self) -> None:
-        message: websockets.Data
-        for message in self.ws:
-            self.process(message)
+        try:
+            message: websockets.Data
+            for message in self.ws:
+                self.process(message)
+            connections.connectionHandler.close(self)
+        except ConnectionClosedError:
+            connections.connectionHandler.close(self)
 
 
     def process(self, msg: str) -> bool:
