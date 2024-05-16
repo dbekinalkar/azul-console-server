@@ -84,6 +84,10 @@ class MoveCommand(Command):
             if player.phase != "playing":
                 player.ws.send("Not your turn")
                 return False
+            
+            if len(args) <= 1:
+                player.ws.send(self.details)
+                return False
 
             match = re.match(r'^[0-9][A-E][0-5]$', args[1])
 
