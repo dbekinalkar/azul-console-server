@@ -68,18 +68,28 @@ class LeaveCommand(Command):
 
 
 class PartyCommand(Command):
-    usage: str = "party"
-    details: str = "View the game party"
+    usage: str = "party [clear]"
+    details: str = "View / clear the game party"
 
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        if len(args) > 1 and args[1].lower() == "clear":
+            try:
+                game.gameHandler.clear_party()
+                player.ws.send("Party cleared")
+                return True
+            except Exception as e:
+                player.ws.send(e.args[0])
+                return False
+
+
         if len(game.gameHandler.party) == 0:
             player.ws.send("No one in game party")
             return True
-        else:
-            p: 'SocketPlayer'
-            names: list[str] = [p.name for p in game.gameHandler.party]
-            player.ws.send("Party: " + ", ".join(names))
-            return False
+        
+        p: 'SocketPlayer'
+        names: list[str] = [p.name for p in game.gameHandler.party]
+        player.ws.send("Party: " + ", ".join(names))
+        return False
 
 class StartCommand(Command):
     usage: str = "start"

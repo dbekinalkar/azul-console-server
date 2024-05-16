@@ -60,6 +60,14 @@ class GameHandler:
             self.party.remove(p)
 
             return True
+        
+    def clear_party(self) -> bool:
+        with self.partyLock:
+            if self.game != None:
+                raise Exception("Game is running")
+            
+            self.party.clear()
+            return True
     
     def start_game(self) -> bool:
         with self.partyLock:
