@@ -232,6 +232,7 @@ class SocketPlayer(Player):
 
     def listen(self) -> None:
         try:
+            self.ws.send(f"Connected to Azul Server as {self.name}")
             message: websockets.Data
             for message in self.ws:
                 self.process(message)
