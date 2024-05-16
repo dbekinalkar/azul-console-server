@@ -216,7 +216,8 @@ class SocketPlayer(Player):
     def __init__(self, ws: ServerConnection):
         Player.__init__(self)
 
-        self.name = f"Guest {ws.id}"
+        self.name = f"Guest{ws.id}"
+        self.name = self.name[:self.name.index('-')]
         self.ws = ws
 
         self.phase = "waiting"
