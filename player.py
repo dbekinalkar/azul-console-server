@@ -14,10 +14,16 @@ from ceramic.state import Tile
 import re
 
 class Command:
+    usage: str
+    details: str
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         pass
 
 class NameCommand(Command):
+    usage: str = "name [name]"
+    details: str = "Use to change / view name"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         if len(args) <= 1:
             player.ws.send(f"Current Name: {player.name}")
@@ -35,6 +41,9 @@ class NameCommand(Command):
         return True
 
 class JoinCommand(Command):
+    usage: str = "join"
+    details: str = "Join the game party"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         try: 
             game.gameHandler.join(player)
@@ -45,6 +54,9 @@ class JoinCommand(Command):
             return False
 
 class LeaveCommand(Command):
+    usage: str = "leave"
+    details: str = "Leave the game party"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         try:
             game.gameHandler.leave(player)
@@ -56,6 +68,9 @@ class LeaveCommand(Command):
 
 
 class PartyCommand(Command):
+    usage: str = "party"
+    details: str = "View the game party"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         if len(game.gameHandler.party) == 0:
             player.ws.send("No one in game party")
@@ -67,6 +82,9 @@ class PartyCommand(Command):
             return False
 
 class StartCommand(Command):
+    usage: str = "start"
+    details: str = "Start the Azul game"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         try:
             game.gameHandler.start_game()
@@ -76,6 +94,9 @@ class StartCommand(Command):
             return False
 
 class StateCommand(Command):
+    usage: str = "state"
+    details: str = "View the game state"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         if not game.gameHandler.game:
             player.ws.send("No current game")
@@ -85,6 +106,9 @@ class StateCommand(Command):
         return True
 
 class MoveCommand(Command):
+    usage: str = "move [pile][color][row]"
+    details: str = "Use in a game to input a move"
+
     def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
         with player.actionLock:
             if player.phase != "playing":
@@ -112,6 +136,34 @@ class MoveCommand(Command):
             player.actionSem.release()
 
             return True
+        
+class HelpCommand(Command):
+    usage: str = "help"
+    details: str = "Gives details on all commands"
+
+    commands: dict[str, Command]
+    usageLen: int
+
+    def __init__(self, commands: dict[str, Command]):
+        self.commands = commands
+        self.usageLen = max([len(cmdObj.usage) for cmdObj in commands.values()])
+
+    def execute(self, args: list[str], player: 'SocketPlayer') -> bool:
+        if len(args) <= 1:
+            player.ws.send("\n".join([f"{cmdObj.usage:{self.usageLen}} {cmdObj.details}" for cmdObj in self.commands.values()]))
+            return True
+        
+        cmd: str = args[1].lower()
+
+        if not cmd in commands:
+            player.ws.send("Not a valid command")
+            return False
+        
+        cmdObj: Command = self.commands.get(cmd)
+        player.ws.send(f"{cmdObj.usage:{self.usageLen}} {cmdObj.details}")
+        return True
+
+
 
 commands: dict[str, Command] = {
     "name": NameCommand(),
@@ -122,6 +174,8 @@ commands: dict[str, Command] = {
     "state": StateCommand(),
     "move": MoveCommand(),
 }
+
+commands["help"] = HelpCommand(commands)
 
 class SocketPlayer(Player):
     name: str
@@ -161,11 +215,6 @@ class SocketPlayer(Player):
     def process(self, msg: str) -> bool:
         args: list[str] = msg.split(' ')
         cmd: str = args[0].lower()
-
-
-        if cmd == "help":
-            self.ws.send("Commands: " + ", ".join(commands.keys()))
-            return True
         
         if cmd not in commands:
             self.ws.send("Invalid Command")
